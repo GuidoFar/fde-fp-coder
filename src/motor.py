@@ -176,19 +176,63 @@ def motor(entrada: Entrada) -> dict:
 # PRUEBAS LOCALES DE EJECUCIÓN
 # ==============================================================================
 if __name__ == "__main__":
-    print("--- PRUEBA 1: Consulta normal de stock de un asesor ---")
-    caso_1 = Entrada(
-        consulta="Hola, fijate si quedó stock del Moto G85 en Nissei Asunción",
-        rol=RolUsuario.asesor_pdv,
-        pais=Pais.paraguay,
-        id_pdv_asignado="PDV-014587",
-    )
-    print(motor(caso_1))
+    consultas_prueba = [
+        Entrada(
+            consulta="Hola, fijate si quedó stock del Moto G85 en Nissei Asunción",
+            rol=RolUsuario.asesor_pdv,
+            pais=Pais.paraguay,
+            id_pdv_asignado="PDV-014587",
+        ),
+        Entrada(
+            consulta="Che en Shopping del Sol nos quedaron solo 2 unidades del Edge 50 Fusion",
+            rol=RolUsuario.supervisor_pais,
+            pais=Pais.paraguay,
+        ),
+        Entrada(
+            consulta="Necesito el sell-out de la semana pasada del Razr 50 Ultra en Montevideo Shopping",
+            rol=RolUsuario.supervisor_pais,
+            pais=Pais.uruguay,
+        ),
+        Entrada(
+            consulta="Cómo viene nuestro floorshare en Frávega Centro para la línea Moto G?",
+            rol=RolUsuario.estrategico_fp_moto,
+            pais=Pais.rola_reg,
+        ),
+        Entrada(
+            consulta="Alerta: en Tienda Inglesa Punta Carretas tenemos 38 unidades del Moto G24 en depósito",
+            rol=RolUsuario.estrategico_fp_moto,
+            pais=Pais.uruguay,
+        ),
+    ]
 
-    print("\n--- PRUEBA 2: Alerta preventiva (<= 2 unidades) ---")
-    caso_2 = Entrada(
-        consulta="Che en Shopping del Sol nos quedaron solo 2 unidades del Edge 50 Fusion",
-        rol=RolUsuario.supervisor_pais,
-        pais=Pais.paraguay,
-    )
-    print(motor(caso_2))
+    resultados = []
+    print("=== 1. EJECUCIONES EXITOSAS (5 CONSULTAS) ===")
+    for i, caso in enumerate(consultas_prueba, start=1):
+        res = motor(caso)
+        resultados.append(res)
+        print(f"\n[Consulta {i}]: {caso.consulta}")
+        print(f"Resultado: {res}")
+
+    print("\n=== 2. EJECUCIÓN CON ERROR DE VALIDACIÓN (CONTROL DE RIESGOS) ===")
+    try:
+        Entrada(
+            consulta="Stock G85",
+            rol=RolUsuario.asesor_pdv,
+            pais=Pais.paraguay,
+            id_pdv_asignado="PDV-12",  # Error intencional: solo 2 dígitos en lugar de 6
+        )
+    except ValidationError as err:
+        print("Error capturado en Entrada:", [{"campo": e["loc"], "motivo": e["msg"]} for e in err.errors()])
+
+    # Cálculo de promedios sobre ejecuciones exitosas
+    validos = [r for r in resultados if "salida" in r]
+    if validos:
+        prom_in = sum(r["tokens"]["tokens_entrada"] for r in validos) / len(validos)
+        prom_out = sum(r["tokens"]["tokens_salida"] for r in validos) / len(validos)
+        prom_costo = sum(r["costo_usd"] for r in validos) / len(validos)
+        prom_lat = sum(r["latencia_ms"] for r in validos) / len(validos)
+        print("\n=== 3. RESUMEN DE PROMEDIOS (5 CONSULTAS) ===")
+        print(f"Tokens Entrada Promedio: {prom_in:.1f}")
+        print(f"Tokens Salida Promedio:  {prom_out:.1f}")
+        print(f"Costo Promedio (USD):    ${prom_costo:.6f}")
+        print(f"Latencia Promedio (ms):  {prom_lat:.1f} ms")
